@@ -8,6 +8,9 @@ void ofApp::setup(){
 	videoBuffer.begin();
 	ofClear(0, 0, 0, 255);
 	videoBuffer.end();
+	//minimumFloat = std::numeric_limits<float>::min();
+	minimumFloat = 0.01;
+	maxIteration = minimumFloat;
 }
 
 //--------------------------------------------------------------
@@ -27,19 +30,18 @@ void ofApp::refresh() {
 	height = (float)ofGetHeight();
 	videoBuffer.allocate(width, height);
 	window.set(width, height);
-	shader.setUniform2f("window", window);
 	ofClear(0, 0, 0, 255);
 }
 
 void ofApp::setUniforms() {
-		shader.setUniform3f("horn1", horn1);
-		shader.setUniform3f("horn2", horn2);
-		shader.setUniform3f("clarinet1", clarinet1);
-		shader.setUniform3f("clarinet2", clarinet2);
-		shader.setUniform3f("bassoon1", bassoon1);
-		shader.setUniform3f("bassoon2", bassoon2);
-		shader.setUniform3f("oboe1", oboe1);
-		shader.setUniform3f("oboe2", oboe2);
-		shader.setUniform3f("flute1", flute1);
-		shader.setUniform3f("flute2", flute2);
+	for (int a = 0; a < 3; a++) {
+		if (iteration[a] > maxIteration) {
+			maxIteration += minimumFloat;
+		}
+		iteration[a] += maxIteration;
+		iteration[a] *= abs(ofRandomf());
+	}
+	shader.setUniform2f("window", window);
+	shader.setUniform1fv("iteration", iteration, 3);
+	cout << iteration[0] << endl;
 }

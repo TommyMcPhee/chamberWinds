@@ -12,5 +12,6 @@ class ofApp : public ofBaseApp{
 		ofFbo videoBuffer;
 		float width, height;
 		ofVec2f window;
-		ofVec3f horn1, horn2, clarinet1, clarinet2, bassoon1, bassoon2, oboe1, oboe2, flute1, flute2;
+		float minimumFloat, maxIteration;
+		float iteration[3] = { 2.0, 2.0, 2.0 };
 };

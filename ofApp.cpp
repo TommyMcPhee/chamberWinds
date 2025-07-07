@@ -1,7 +1,7 @@
 #include "ofApp.h"
 
 //--------------------------------------------------------------
-void ofApp::setup(){
+void ofApp::setup() {
 	shader.load("chamberWindsShader");
 	videoBuffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
 	videoBuffer.clear();
@@ -14,7 +14,7 @@ void ofApp::setup(){
 }
 
 //--------------------------------------------------------------
-void ofApp::draw(){
+void ofApp::draw() {
 	refresh();
 	videoBuffer.begin();
 	shader.begin();
@@ -34,7 +34,7 @@ void ofApp::refresh() {
 }
 
 void ofApp::setUniforms() {
-	for (int a = 0; a < 3; a++) {
+	for (int a = 0; a < 6; a++) {
 		if (iteration[a] > maxIteration) {
 			maxIteration += minimumFloat;
 		}
@@ -42,6 +42,6 @@ void ofApp::setUniforms() {
 		iteration[a] *= abs(ofRandomf());
 	}
 	shader.setUniform2f("window", window);
-	shader.setUniform1fv("iteration", iteration, 3);
+	shader.setUniform1fv("iteration", iteration, 6);
 	cout << iteration[0] << endl;
 }

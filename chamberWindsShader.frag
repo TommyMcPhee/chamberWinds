@@ -24,11 +24,15 @@ vec3 hsb2rgb(vec3 hsb){
 }
 
 float scale(float quantity){
-    return pow(quantity * 0.5 + 0.5, 2.0);
+    return quantity * 0.25 + 0.25;
+}
+
+float phaseIncrement(float inverseWavelength){
+    return mod(inverseWavelength, TWO_PI) * 0.5;
 }
 
 float oscillate(vec2 frequency){
-    return scale(sin(pow(frequency.x, 2.0) * TWO_PI * gl_FragCoord.x)) * scale(sin(pow(frequency.y, 2.0) * TWO_PI * gl_FragCoord.y)) * pow((frequency.x + frequency.y) * 0.5, 0.5);
+    return (scale(cos(pow(frequency.x, 2.0) * TWO_PI * gl_FragCoord.x) + phaseIncrement(frequency.x)) * pow(frequency.x / window.x, 0.5)) + (scale(cos(pow(frequency.y, 2.0) * TWO_PI * gl_FragCoord.y) + phaseIncrement(frequency.y)) * pow(frequency.y / window.y, 0.5));
 }
 
 void main()
@@ -38,18 +42,18 @@ void main()
     vec2 inverseNormalized = 1.0 - normalized;
     vec3 color = vec3(1.0);
     float position = pow(inverseNormalized.y, 2.0) * pow(normalized.x * inverseNormalized.x, 2.0) * normalized.y * (1.0 - (normalized.x * inverseNormalized.x));
-
+/*
     for(int index = 0; index < 3; index++){
         for(float increment = 1.0; increment < iteration[index]; increment++){
         color[index] *= pow(sin(position * increment * TWO_PI) * 0.5 + 0.5, 1.0 / (increment * iteration[index]));
         }
     }
-
+*/
     vec3 feedbackColor = texture2DRect(tex0, texCoordVarying).rgb;
 
-    float hue = oscillate(vec2(iteration[0], iteration[1]) / 20.0);
-    float saturation = oscillate(vec2(iteration[2], iteration[3]) / 20.0);
-    float brightness = oscillate(vec2(iteration[4], iteration[5]) / 20.0);
+    float hue = oscillate(vec2(iteration[0], iteration[1]));
+    float saturation = oscillate(vec2(iteration[2], iteration[3]));
+    float brightness = oscillate(vec2(iteration[4], iteration[5]));
 
     color = hsb2rgb(vec3(hue, saturation, brightness));
 

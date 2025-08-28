@@ -2,39 +2,15 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-	settings.setInListener(this);
-	settings.sampleRate = sampleRate;
-	settings.bufferSize = bufferSize;
-	settings.numInputChannels = 1;
-	settings.setApi(ofSoundDevice::Api::MS_DS);
-	stream.setup(settings);
 	shader.load("chamberWindsShader");
 	videoBuffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
 	videoBuffer.clear();
 	videoBuffer.begin();
 	ofClear(0, 0, 0, 255);
 	videoBuffer.end();
-
 	//minimumFloat = std::numeric_limits<float>::min();
 	minimumFloat = 0.01;
 	maxIteration = minimumFloat;
-}
-
-void ofApp::ofSoundStreamSetup() {
-
-}
-
-void ofApp::audioIn(ofSoundBuffer& buffer) {
-	for(int a = 0; a < bufferSize; a++){
-		analysisAudio[a + bufferSize] = analysisAudio[a];
-		analysisAudio[a] = buffer[a];
-		float sampleDifference = 0.0;
-		for (int b = a; b < bufferSize + a; b++) {
-			sampleDifference += analysisAudio[b - a] - analysisAudio[b];
-		}
-		corellation[a] = sampleDifference / (float)(bufferSize * 2.0);
-		cout << corellation[a] << " " << a << endl;
-	}
 }
 
 //--------------------------------------------------------------
@@ -50,14 +26,18 @@ void ofApp::draw() {
 }
 
 void ofApp::refresh() {
+	frameRate = ofGetFrameRate();
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
+	activityIncrement = width * height;
+	activity += pow(activityIncrement, 1.0 - activity);
 	videoBuffer.allocate(width, height);
 	window.set(width, height);
 	ofClear(0, 0, 0, 255);
 }
 
 void ofApp::setUniforms() {
+	/*
 	for (int a = 0; a < 6; a++) {
 		if (iteration[a] > maxIteration) {
 			maxIteration += minimumFloat;
@@ -65,7 +45,10 @@ void ofApp::setUniforms() {
 		iteration[a] += maxIteration;
 		iteration[a] *= abs(ofRandomf());
 	}
+		shader.setUniform1fv("iteration", iteration, 6);
+		*/
+
+	shader.setUniform1f("activity", activity);
 	shader.setUniform2f("window", window);
-	shader.setUniform1fv("iteration", iteration, 6);
 	cout << iteration[0] << endl;
 }

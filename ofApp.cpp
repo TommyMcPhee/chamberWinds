@@ -1,7 +1,17 @@
 #include "ofApp.h"
+#include <GLFW/glfw3.h>
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+	const auto processor_count = std::thread::hardware_concurrency();
+	cout << processor_count << "processors" << endl;
+	
+	GLFWmonitor *pMonitor = glfwGetPrimaryMonitor();
+	GLFWvidmode pVidmode = *glfwGetVideoMode(pMonitor);
+	cout << pVidmode.refreshRate << "maxfps" << endl;
+
+	static const int frameSamples = int(trunc(sampleRate / pVidmode.refreshRate)) + 1;
+
 	shader.load("chamberWindsShader");
 	videoBuffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
 	videoBuffer.clear();
@@ -33,6 +43,8 @@ void ofApp::refresh() {
 	activity += pow(activityIncrement, 1.0 - activity);
 	videoBuffer.allocate(width, height);
 	window.set(width, height);
+	tone.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());
+	pitch.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());
 	ofClear(0, 0, 0, 255);
 }
 
@@ -50,5 +62,6 @@ void ofApp::setUniforms() {
 
 	shader.setUniform1f("activity", activity);
 	shader.setUniform2f("window", window);
-	cout << iteration[0] << endl;
+	shader.setUniform4f("pitch", pitch);
+	shader.setUniform4f("tone", tone); 
 }

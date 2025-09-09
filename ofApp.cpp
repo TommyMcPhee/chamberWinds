@@ -18,9 +18,6 @@ void ofApp::setup() {
 	videoBuffer.begin();
 	ofClear(0, 0, 0, 255);
 	videoBuffer.end();
-	//minimumFloat = std::numeric_limits<float>::min();
-	minimumFloat = 0.01;
-	maxIteration = minimumFloat;
 }
 
 //--------------------------------------------------------------
@@ -39,8 +36,16 @@ void ofApp::refresh() {
 	frameRate = ofGetFrameRate();
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
-	activityIncrement = width * height;
-	activity += pow(activityIncrement, 1.0 - activity);
+	activityIncrement = pow(1.0 / (width * height), activity * 0.5 + 0.25);
+	if(midpoint){
+		activity -= activityIncrement;
+	}
+	else{
+		activity += activityIncrement;
+		if(activity > 1.0){
+			midpoint = true;
+		}
+	}
 	videoBuffer.allocate(width, height);
 	window.set(width, height);
 	tone.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());

@@ -14,10 +14,8 @@ public:
 	void setUniforms();
 	ofShader shader;
 	ofFbo videoBuffer;
-	bool midpoint = 0;
-	float frameRate, width, height, activity, activityIncrement;
+	bool midpoint = false;
+	float frameRate, width, height, activity = 0.0, activityIncrement;
 	ofVec2f window;
 	ofVec4f pitch, tone;
-	float minimumFloat, maxIteration;
-	float iteration[6] = { 2.0, 2.0, 2.0, 2.0, 2.0, 2.0 };
 };

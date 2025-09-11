@@ -38,17 +38,23 @@ vec3 hsb2rgb(vec3 hsb){
     return clamp(rgb,vec3(0.0),vec3(1.0));
 }
 
-float scale(float quantity){
-    return quantity * 0.25 + 0.25;
+//needed as function?
+float unipolar(float quantity){
+    return quantity * 0.5 + 0.5;
 }
 
-float phaseIncrement(float inverseWavelength){
-    return mod(inverseWavelength, TWO_PI) * 0.5;
+
+float oscillate(float frequencyComponent, float centeredComponent){
+    return unipolar(cos(pow(frequencyComponent, 2.0) * TWO_PI * centeredComponent + (mod(centeredComponent, TWO_PI) * 0.5)));
 }
 
-float oscillate(vec2 frequency, float modulator, vec2 centered){
-    vec2 carrier = frequency * modulator;
-    return cos(pow(carrier.x, 2.0) * TWO_PI * centered.x + phaseIncrement(carrier.x)) * cos(pow(carrier.y, 2.0) * TWO_PI * centered.y + phaseIncrement(carrier.y)) * 0.5 + 0.5;
+float newComponent(vec4 carrierMix, float modulator, float feedback, vec2 centered){
+    vec2 frequency = carrierMix.xy * modulator;
+    vec2 oscillations = vec2(oscillate(frequency.x, centered.x), oscillate(frequency.y, centered.y));
+    //?
+    vec2 newComponents = vec2(mix(oscillations, vec2(feedback), carrierMix.zw));
+    //log
+    return newComponents.x * newComponents.y;
 }
 
 void main()
@@ -62,12 +68,10 @@ void main()
     vec3 feedbackRGB = texture2DRect(tex0, texCoordVarying).rgb;
     vec3 feedbackHSB = rgb2hsb(feedbackRGB);
 
-    vec4 tonePitch = vec4(tone * pitch);
-    vec4 inverseTonePitch = 1.0 - tonePitch;
-    float brightness = mix(oscillate(vec2(inverseTonePitch.xy), 1.0, adjusted), feedbackHSB.z, inverseTonePitch.z) * activity;
+    float brightness = newComponent(vec4(1.0), 1.0, feedbackHSB.z, adjusted) * activity;
     float inverseBrightness = 1.0 - brightness;
-    float saturation = mix(oscillate(vec2(tonePitch.xy), brightness, adjusted), feedbackHSB.y, tonePitch.z) * brightness;
-    float hue = mix(oscillate(vec2(pitch.xy), saturation, adjusted), feedbackHSB.x, pitch.z);
+    float saturation = newComponent(tone, brightness, feedbackHSB.y, adjusted) * inverseBrightness;
+    float hue = newComponent(pitch, saturation, feedbackHSB.x, adjusted);
 
     vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
     //vec3 color = vec3(tonePitch.x, tonePitch.y, brightness);

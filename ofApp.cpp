@@ -6,18 +6,34 @@ void ofApp::setup() {
 	const auto processor_count = std::thread::hardware_concurrency();
 	cout << processor_count << "processors" << endl;
 	
+	streamSettings.sampleRate = sampleRate;
+	streamSettings.numInputChannels = channels;
 	GLFWmonitor *pMonitor = glfwGetPrimaryMonitor();
 	GLFWvidmode pVidmode = *glfwGetVideoMode(pMonitor);
 	cout << pVidmode.refreshRate << "maxfps" << endl;
 
-	static const int frameSamples = int(trunc(sampleRate / pVidmode.refreshRate)) + 1;
-
+	static const int frameSamples = int(trunc(sampleRate * channels / pVidmode.refreshRate)) + 1;
+	while(bufferSizeDecider < frameSamples / 2){
+		bufferSizeDecider *= 2;
+	}
+	
+	streamSettings.bufferSize = bufferSizeDecider;
 	shader.load("chamberWindsShader");
 	videoBuffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
 	videoBuffer.clear();
 	videoBuffer.begin();
 	ofClear(0, 0, 0, 255);
 	videoBuffer.end();
+}
+
+void ofApp::ofSoundStreamSetup(ofSoundStreamSettings &settings){
+
+}
+
+void ofApp::audioIn(ofSoundBuffer &buffer){
+	for(int a = 0; a < buffer.getNumFrames(); a++){
+			//autocorrelation code
+	}
 }
 
 //--------------------------------------------------------------
@@ -36,6 +52,7 @@ void ofApp::refresh() {
 	frameRate = ofGetFrameRate();
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
+	//scaling
 	activityIncrement = pow(1.0 / (width * height), activity * 0.5 + 0.25);
 	if(midpoint){
 		activity -= activityIncrement;
@@ -54,16 +71,6 @@ void ofApp::refresh() {
 }
 
 void ofApp::setUniforms() {
-	/*
-	for (int a = 0; a < 6; a++) {
-		if (iteration[a] > maxIteration) {
-			maxIteration += minimumFloat;
-		}
-		iteration[a] += maxIteration;
-		iteration[a] *= abs(ofRandomf());
-	}
-		shader.setUniform1fv("iteration", iteration, 6);
-		*/
 
 	shader.setUniform1f("activity", activity);
 	shader.setUniform2f("window", window);

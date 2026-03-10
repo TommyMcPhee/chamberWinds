@@ -5,20 +5,24 @@
 class ofApp : public ofBaseApp {
 public:
 	static const int sampleRate = 48000;
-	static const int channels = 2;\
 
 	int bufferSize;
 
+	void cin_refresh();
 	void setup();
 	void draw();
 	ofSoundStreamSettings streamSettings;
+	ofSoundStream stream;
 	void ofSoundStreamSetup(ofSoundStreamSettings &settings);
 	void audioIn(ofSoundBuffer &buffer);
+	void audioOut(ofSoundBuffer &buffer);
+	float dc, amplitude;
+	
 
 	void refresh();
 	void setUniforms();
 	ofShader shader;
-	ofFbo videoBuffer;
+	ofFbo videoBuffer, videoBuffer1;
 	bool midpoint = false;
 	int bufferSizeDecider;
 	float frameRate, width, height, activity = 0.0, activityIncrement;

@@ -59,17 +59,26 @@ void ofApp::setup() {
     streamSettings.setInDevice(in_device);
     streamSettings.numInputChannels = in_device.inputChannels;
 
+	//ofSetVerticalSync(true);
 	shader.load("chamberWindsShader");
+	
+	//videoBuffer.setDefaultTextureIndex(0);
 	videoBuffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
-	videoBuffer.clear();
+	//videoBuffer.clear();
 	videoBuffer.begin();
 	ofClear(0, 0, 0, 255);
 	videoBuffer.end();
+	//videoBuffer1.setDefaultTextureIndex(2);
+
+	//videoBuffer.getTextureReference(0);
+	
 	videoBuffer1.allocate(ofGetScreenWidth(), ofGetScreenHeight());
-	videoBuffer1.clear();
+	//videoBuffer1.clear();
 	videoBuffer1.begin();
 	ofClear(0, 0, 0, 255);
 	videoBuffer1.end();
+
+
 
 	streamSettings.setInListener(this);
 	streamSettings.setOutListener(this);
@@ -104,13 +113,16 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 //--------------------------------------------------------------
 void ofApp::draw() {
 	refresh();
-	videoBuffer1.begin();
+	videoBuffer.begin();
 	shader.begin();
-	videoBuffer.draw(0, 0);
+	videoBuffer1.draw(0, 0);
 	setUniforms();
 	shader.end();
+	videoBuffer.end();
+	videoBuffer.draw(0,0);
+	videoBuffer1.begin();
+	videoBuffer.draw(0, 0);
 	videoBuffer1.end();
-	videoBuffer1.draw(0, 0);
 }
 
 
@@ -138,7 +150,6 @@ void ofApp::refresh() {
 }
 
 void ofApp::setUniforms() {
-
 	shader.setUniform1f("activity", activity);
 	shader.setUniform2f("window", window);
 	shader.setUniform4f("pitch", pitch);

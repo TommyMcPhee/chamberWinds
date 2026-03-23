@@ -76,5 +76,7 @@ void main()
     vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
     //vec3 color = vec3(tonePitch.x, tonePitch.y, brightness);
 
-    outputColor = vec4(color, 1.0);
+    //the output function was updated
+
+    outputColor = vec4(mix(color, 1.0 - color, activity), 1.0);
 }

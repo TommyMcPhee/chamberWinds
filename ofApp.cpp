@@ -11,7 +11,7 @@ void ofApp::print_array_value(int index, int value){
 }
 //--------------------------------------------------------------
 void ofApp::setup() {
-	
+	epsilon_float = std::numeric_limits<float>::epsilon();
 	unsigned int device_list_size, out_device_index, in_device_index, sample_rate_index;
     auto device_list = stream.getDeviceList();
     device_list_size = device_list.size();
@@ -52,12 +52,29 @@ void ofApp::setup() {
 	GLFWmonitor *pMonitor = glfwGetPrimaryMonitor();
 	GLFWvidmode pVidmode = *glfwGetVideoMode(pMonitor);
 	static const int frameSamples = int(trunc(sampleRate * channels / pVidmode.refreshRate)) + 1;
+
+	while(buffer_size < frameSamples / 2){
+		buffer_size *= 2;
+		if(buffer_size =  buffer_sizes[buffer_sizes.size() - 1]){
+			break;
+		}
+	}
+	if(buffer_size < buffer_sizes[0]){
+		buffer_size = buffer_sizes[0];
+	}
+	streamSettings.bufferSize = buffer_size;
+	input_buffer = std::make_unique<float[]>(channels * buffer_size);
+	input_mono = std::make_unique<float[]>(buffer_size);
+	cout << "This program automatically chosses the buffer size based on the monitor's refresh rate." << endl;
+	cout << "Buffer size chosen:	" << buffer_size << endl;
+	cout << "Please ensure your operating system and hardware is set to be compatible with this buffer size before proceeding." << "\n" << endl;
+
 	unsigned int sample_rates_size = sample_rates.size();
     for(unsigned int a = 0; a < sample_rates_size; a++){
         print_array_value(a, sample_rates[a]);
     }
 
-    cout << "Enter the index of the desired sample rate (chosen sample rate must be compatible with your API and device(s)):" << endl;
+	cout << "Enter the index of the desired sample rate (chosen sample rate must be compatible with your API and device(s)):" << endl;
     cout << "Enter any integer greater than or equal to " << sample_rates_size << " to use your current default sample rate." << endl;
     
     if(std::cin >> sample_rate_index){
@@ -71,18 +88,6 @@ void ofApp::setup() {
          cout << "Please enter an unsigned integer." << endl;
     	cin_refresh();
     }
-
-	while(bufferSize < frameSamples / 2){
-		bufferSize *= 2;
-		if(bufferSize =  buffer_sizes[buffer_sizes.size() - 1]){
-			break;
-		}
-	}
-	if(bufferSize < buffer_sizes[0]){
-		bufferSize = buffer_sizes[0];
-	}
-	streamSettings.bufferSize = bufferSize;
-	input_buffer = std::make_unique<float[]>(channels * bufferSize);
 
 	//ofSetVerticalSync(true);
 	shader.load("chamberWindsShader");
@@ -114,23 +119,36 @@ void ofApp::ofSoundStreamSetup(ofSoundStreamSettings &settings){
 
 }
 
+int ofApp::calculate_index(int inA, int inB){
+	return inA * channels + inB;
+}
+
 void ofApp::audioIn(ofSoundBuffer &buffer){
 	for(int a = 0; a < buffer.getNumFrames(); a++){
-		for(int b = 0; b < buffer.getNumChannels(); b++){
-			int index = a * bufferSize + b;
+		float mono_sample = 1.0;
+		for(int b = 0; b < channels; b++){
+			int index = calculate_index(a, b);
 			input_buffer[index] = buffer[index];
+			mono_sample += buffer[index];
 		}
+		mono_sample *= 0.5;
+		input_mono[a] = mono_sample;
 	}
 }
 
 void ofApp::audioOut(ofSoundBuffer &buffer){
-	float phase = 0.0;
 	for(int a = 0; a < buffer.getNumFrames(); a++){
-		phase = phase + (1.0 / 20.0);
-		phase = fmod(phase, 1.0);
-		float output_sample = sin(phase * TWO_PI);
-		for(int b = 0; b < buffer.getNumChannels(); b++){
-			buffer[a * buffer.getNumChannels() + b] = ofRandomf();
+		activity = activity + epsilon_float;
+		float test_pitch = 0.4;
+		float input_mono_sample = input_mono[a];
+		for(int b = 0; b < channels; b++){
+			int index = calculate_index(a, b);
+			float unfiltered = input_mono_sample;
+			z0[b] = ((-1.0 * activity * activity * z2[b]) + (2.0 * activity * cos(test_pitch)) + input_mono_sample) / 3.0;
+			z2[b] = z1[b];
+			
+			z1[b] = z0[b];
+			buffer[index] = unfiltered;
 		}
 	}
 }
@@ -156,6 +174,7 @@ void ofApp::refresh() {
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
 	//scaling
+	/*
 	activityIncrement = pow(1.0 / (width * height), activity * 0.5 + 0.25);
 	if(midpoint){
 		activity -= activityIncrement;
@@ -166,6 +185,7 @@ void ofApp::refresh() {
 			midpoint = true;
 		}
 	}
+		*/
 	videoBuffer.allocate(width, height);
 	videoBuffer1.allocate(width, height);
 	window.set(width, height);
@@ -175,6 +195,7 @@ void ofApp::refresh() {
 }
 
 void ofApp::setUniforms() {
+	cout << activity << endl;
 	shader.setUniform1f("activity", activity);
 	shader.setUniform2f("window", window);
 	shader.setUniform4f("pitch", pitch);

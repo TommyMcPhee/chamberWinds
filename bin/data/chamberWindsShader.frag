@@ -78,5 +78,5 @@ void main()
 
     //the output function was updated
 
-    outputColor = vec4(mix(color, 1.0 - color, activity), 1.0);
+    outputColor = vec4(color, 1.0);
 }

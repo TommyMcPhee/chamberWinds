@@ -21,13 +21,10 @@ public:
 	ofSoundStream stream;
 	void ofSoundStreamSetup(ofSoundStreamSettings &settings);
 	int calculate_index(int inA, int inB);
-	std::atomic<float> activity = 0.0;
 	void audioIn(ofSoundBuffer &buffer);
 
-	float impulse = 1.0;
-
-
-	std::array<float, 2> z2, z1 = {0.0, 0.0}, z0 = {0.0, 0.0};
+	//std::array<float, 2> z2, z1 = {0.0, 0.0}, z0 = {0.0, 0.0};
+	std::array<float, 2> z1, z0 = {0.0, 0.0};
 	void audioOut(ofSoundBuffer &buffer);
 	float dc, amplitude;
 	
@@ -38,6 +35,6 @@ public:
 	ofFbo videoBuffer, videoBuffer1;
 	bool midpoint = false;
 	float frameRate, width, height;
-	ofVec2f window;
-	ofVec4f pitch, tone;
+	ofVec2f window, activity;
+	ofVec4f tone, pitch;
 };

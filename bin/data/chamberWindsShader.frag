@@ -9,9 +9,7 @@ in vec2 texCoordVarying;
 out vec4 outputColor;
 uniform vec2 window;
 
-uniform float activity;
-uniform vec4 pitch;
-uniform vec4 tone;
+uniform vec2 activity;
 
 vec3 rgb2hsb(vec3 c)
 {
@@ -45,14 +43,13 @@ float unipolar(float quantity){
 
 
 float oscillate(float frequencyComponent, float centeredComponent){
-    return unipolar(cos(pow(frequencyComponent, 2.0) * TWO_PI * centeredComponent + (mod(centeredComponent, TWO_PI) * 0.5)));
+    return unipolar(cos(pow(frequencyComponent, 4.0) * TWO_PI * centeredComponent + (mod(centeredComponent, TWO_PI) * 0.5))) * frequencyComponent;
 }
 
-float newComponent(vec4 carrierMix, float modulator, float feedback, vec2 centered){
-    vec2 frequency = carrierMix.xy * modulator;
+float newComponent(float modulator, float feedback, vec2 centered){
+    vec2 frequency = vec2(abs(0.5 - modulator) * 8.0);
     vec2 oscillations = vec2(oscillate(frequency.x, centered.x), oscillate(frequency.y, centered.y));
-    //?
-    vec2 newComponents = vec2(mix(oscillations, vec2(feedback), carrierMix.zw));
+    vec2 newComponents = vec2(mix(oscillations, vec2(feedback), modulator));
     //log
     return newComponents.x * newComponents.y;
 }
@@ -60,21 +57,23 @@ float newComponent(vec4 carrierMix, float modulator, float feedback, vec2 center
 void main()
 {
     float pixel = window.x * window.y;
-    vec2 normalized = (gl_FragCoord.xy / window) * 2.0 - 1.0;
-    vec2 adjusted = normalized * window;
+    vec2 normalized = vec2(gl_FragCoord.xy / pixel);
     vec2 inverseNormalized = 1.0 - normalized;
-    float position = pow(inverseNormalized.y, 2.0) * pow(normalized.x * inverseNormalized.x, 2.0) * normalized.y * (1.0 - (normalized.x * inverseNormalized.x));
+    vec2 position = vec2(normalized.x * inverseNormalized.x, normalized.y * inverseNormalized.y) * 4.0;
+    vec2 adjusted = position * window;
+    vec2 seed = activity * adjusted;
+    float seedFloat = seed.x * seed.y;
+    
 
     vec3 feedbackRGB = texture2DRect(tex0, texCoordVarying).rgb;
+    feedbackRGB = (0.25 - ((1.0 - feedbackRGB) * feedbackRGB)) * 4.0;
     vec3 feedbackHSB = rgb2hsb(feedbackRGB);
 
-    float brightness = newComponent(vec4(1.0), 1.0, feedbackHSB.z, adjusted) * activity;
-    float inverseBrightness = 1.0 - brightness;
-    float saturation = newComponent(tone, brightness, feedbackHSB.y, adjusted) * inverseBrightness;
-    float hue = newComponent(pitch, saturation, feedbackHSB.x, adjusted);
+    float brightness = newComponent(seedFloat, feedbackHSB.z, adjusted);
+    float saturation = newComponent(brightness, feedbackHSB.y, adjusted);
+    float hue = newComponent(1.0 - saturation, feedbackHSB.x, adjusted);
 
-    vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
-    //vec3 color = vec3(tonePitch.x, tonePitch.y, brightness);
+    vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)), feedbackRGB, activity.x * activity.y);
 
     //the output function was updated
 

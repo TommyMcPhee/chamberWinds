@@ -144,9 +144,12 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 		float input_mono_sample = input_mono[a];
 		for(int b = 0; b < channels; b++){
 			int index = calculate_index(a, b);
+			/*
 			z2[b] = z1[b];
 			z1[b] = z0[b];
 			z0[b] = ((-1.0 * resonance * resonance * z2[b]) + (2.0 * resonance * cos(test_pitch) * z1[b]) + (ofRandomf())) * 0.25;
+			*/
+			z1[b] = z0[b];
 			buffer[index] = z0[b];
 		}
 	}
@@ -188,14 +191,15 @@ void ofApp::refresh() {
 	videoBuffer.allocate(width, height);
 	videoBuffer1.allocate(width, height);
 	window.set(width, height);
+	activity.set(abs(ofRandomf() * 0.01), abs(ofRandomf() * 0.01));
 	tone.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());
 	pitch.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());
 	ofClear(0, 0, 0, 255);
 }
 
 void ofApp::setUniforms() {
-	shader.setUniform1f("activity", activity);
 	shader.setUniform2f("window", window);
+	shader.setUniform2f("activity", activity);
+	shader.setUniform4f("tone", tone);
 	shader.setUniform4f("pitch", pitch);
-	shader.setUniform4f("tone", tone); 
 }

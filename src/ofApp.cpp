@@ -12,6 +12,19 @@ void ofApp::print_array_value(int index, int value){
 //--------------------------------------------------------------
 void ofApp::setup() {
 	epsilon_float = std::numeric_limits<float>::epsilon();
+	for(int a = 0; a < channels; a++){
+		in_z1[a] = 0.0;
+		in_dc[a] = 0.0;
+		in_amplitude[a] = 0.0;
+		in_delta[a] = 0.0;
+		in_pitch[a] = 0.0;
+		ring_phase[a] = 0.0;
+		out_z1[a] = 0.0;
+		out_dc[a] = 0.0;
+		out_amplitude[a] = 0.0;
+		out_delta[a] = 0.0;
+		out_pitch[a] = 0.0;
+	}
 	unsigned int device_list_size, out_device_index, in_device_index, sample_rate_index;
     auto device_list = stream.getDeviceList();
     device_list_size = device_list.size();
@@ -123,34 +136,117 @@ int ofApp::calculate_index(int inA, int inB){
 	return inA * channels + inB;
 }
 
+float ofApp::mix(float inA, float inB, float mix){
+	return (1.0 - mix) * inA + (mix * inB);
+}
+
 void ofApp::audioIn(ofSoundBuffer &buffer){
 	for(int a = 0; a < buffer.getNumFrames(); a++){
 		float mono_sample = 1.0;
 		for(int b = 0; b < channels; b++){
 			int index = calculate_index(a, b);
-			input_buffer[index] = buffer[index];
-			mono_sample += buffer[index];
+			float input_sample = buffer[index];
+			input_buffer[index] = input_sample;
+			mono_sample += input_sample;
 		}
 		mono_sample *= 0.5;
 		input_mono[a] = mono_sample;
 	}
 }
 
+void ofApp::average(float &value, float new_value){
+    value = mix(value, new_value, reciprocal_sample_count);
+}
+
+void ofApp::analysis(float z1, float z0, float &dc, float &amplitude_root, float &amplitude, float &delta, bool &cross, float &cross_count, float &pitch){
+	dc += z0;
+	float dc_adjustment = dc / sample_count;
+    float inverse_dc_magnitude = 1.0 - abs(dc_adjustment);
+    float amplitude_root_increment = sqrt(abs(z0 - dc_adjustment) * inverse_dc_magnitude);
+    amplitude_root += amplitude_root_increment;
+    amplitude = pow(amplitude_root / sample_count, 2.0);
+    float delta0 = abs(z1 - z0);
+    average(delta, abs(delta0));
+    float threshold = amplitude * inverse_dc_magnitude;
+    bool crossed = false;
+        
+        if(cross){
+            
+            if(z0 < dc_adjustment - threshold){
+                crossed = true;
+            }
+
+        }
+        else{
+            
+            if(z0 > dc_adjustment + threshold){
+                crossed = true;
+            }
+
+        }
+        
+        if(crossed){
+            cross = !cross;
+            cross_count += 1.0;
+            pitch = cross_count / sample_count;
+        }
+
+}
+
+std::array<float, 2> ofApp::comparison(std::array<float, 2> stereo){
+	std::array<float, 2> compared;
+	compared[0] = (stereo[0] + stereo[1]) * 0.5;
+	compared[1] = abs(stereo[0] - stereo[1]);
+	return compared;
+}
+
+float ofApp::oscillate(float &phase, float increment){
+	phase += increment;
+	phase = fmod(phase, 1.0);
+	return sin(phase);
+}
+
+float ofApp::channel_oscillate(std::array<float, 2> average_in, float phase, float increment){
+	return mix(average_in[0], oscillate(phase, increment), average_in[1]);
+}
+
 void ofApp::audioOut(ofSoundBuffer &buffer){
 	for(int a = 0; a < buffer.getNumFrames(); a++){
-		activity = activity + epsilon_float;
-		float test_pitch = TWO_PI * 0.003;
-		float resonance = 1.0;
-		float input_mono_sample = input_mono[a];
+		sample_count += 1.0;
+		reciprocal_sample_count = 1.0 / sample_count;
 		for(int b = 0; b < channels; b++){
 			int index = calculate_index(a, b);
-			/*
-			z2[b] = z1[b];
-			z1[b] = z0[b];
-			z0[b] = ((-1.0 * resonance * resonance * z2[b]) + (2.0 * resonance * cos(test_pitch) * z1[b]) + (ofRandomf())) * 0.25;
-			*/
-			z1[b] = z0[b];
-			buffer[index] = z0[b];
+			analysis(in_z1[b], input_buffer[index], in_dc[b], in_amplitude_root[b], in_amplitude[b], in_delta[b], in_cross[b], in_cross_count[b], in_pitch[b]);		
+		}
+		float input_mono_sample = input_mono[a];
+		average_in_amplitude = comparison(in_amplitude);
+		average_in_delta = comparison(in_delta);
+		average_in_pitch = comparison(in_pitch);
+		for(int b = 0; b < channels; b++){
+			float channel_amplitude = channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency);
+			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency);
+			float ring = oscillate(ring_phase[b], channel_pitch);
+			float new_sample = sin(input_mono_sample * ring * HALF_PI / (channel_amplitude + epsilon_float));
+			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency);
+			float output_sample = mix(new_sample, out_z1[b], channel_delta);
+			analysis(out_z1[b], output_sample, out_dc[b], out_amplitude_root[b], out_amplitude[b], out_delta[b], out_cross[b], out_cross_count[b], out_pitch[b]);
+			out_z1[b] = output_sample;
+			int index = calculate_index(a, b);
+			buffer[index] = output_sample;
+		}
+		average_out_amplitude = comparison(out_amplitude);
+		average_out_delta = comparison(out_delta);
+		average_out_pitch = comparison(out_pitch);
+		amplitude_frequency = 1.0;
+		delta_frequency = 1.0;
+		pitch_frequency = 1.0;
+		for(int b = 0; b < 2; b++){
+			compared_amplitude[b] = abs(average_in_amplitude[b] - average_out_amplitude[b]);
+			amplitude_frequency *= compared_amplitude[b];
+			compared_delta[b] = abs(average_in_delta[b] - average_out_delta[b]);
+			delta_frequency *= compared_delta[b];
+			compared_pitch[b] = abs(average_in_pitch[b] - average_out_pitch[b]);
+			pitch_frequency *= compared_pitch[b];
 		}
 	}
 }
@@ -175,31 +271,18 @@ void ofApp::refresh() {
 	frameRate = ofGetFrameRate();
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
-	//scaling
-	/*
-	activityIncrement = pow(1.0 / (width * height), activity * 0.5 + 0.25);
-	if(midpoint){
-		activity -= activityIncrement;
-	}
-	else{
-		activity += activityIncrement;
-		if(activity > 1.0){
-			midpoint = true;
-		}
-	}
-		*/
 	videoBuffer.allocate(width, height);
 	videoBuffer1.allocate(width, height);
 	window.set(width, height);
-	activity.set(abs(ofRandomf() * 0.01), abs(ofRandomf() * 0.01));
-	tone.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());
-	pitch.set(ofRandomf(), ofRandomf(), ofRandomf(), ofRandomf());
+	vec2_amplitude.set(compared_amplitude[0], compared_amplitude[1]);
+	vec2_delta.set(compared_delta[0], compared_delta[1]);
+	vec2_pitch.set(compared_pitch[0], compared_pitch[1]);	
 	ofClear(0, 0, 0, 255);
 }
 
 void ofApp::setUniforms() {
 	shader.setUniform2f("window", window);
-	shader.setUniform2f("activity", activity);
-	shader.setUniform4f("tone", tone);
-	shader.setUniform4f("pitch", pitch);
+	shader.setUniform2f("amplitude", vec2_amplitude);
+	shader.setUniform2f("delta", vec2_delta);
+	shader.setUniform2f("pitch", vec2_pitch);
 }

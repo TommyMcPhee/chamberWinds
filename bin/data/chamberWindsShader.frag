@@ -9,7 +9,9 @@ in vec2 texCoordVarying;
 out vec4 outputColor;
 uniform vec2 window;
 
-uniform vec2 activity;
+uniform vec2 amplitude;
+uniform vec2 delta;
+uniform vec2 pitch;
 
 vec3 rgb2hsb(vec3 c)
 {
@@ -61,7 +63,7 @@ void main()
     vec2 inverseNormalized = 1.0 - normalized;
     vec2 position = vec2(normalized.x * inverseNormalized.x, normalized.y * inverseNormalized.y) * 4.0;
     vec2 adjusted = position * window;
-    vec2 seed = activity * adjusted;
+    vec2 seed = amplitude * adjusted;
     float seedFloat = seed.x * seed.y;
     
 
@@ -73,7 +75,7 @@ void main()
     float saturation = newComponent(brightness, feedbackHSB.y, adjusted);
     float hue = newComponent(1.0 - saturation, feedbackHSB.x, adjusted);
 
-    vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)), feedbackRGB, activity.x * activity.y);
+    vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)), feedbackRGB, amplitude.x * amplitude.y);
 
     //the output function was updated
 

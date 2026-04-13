@@ -7,11 +7,10 @@
 uniform sampler2DRect tex0;
 in vec2 texCoordVarying;
 out vec4 outputColor;
-uniform vec2 window;
 
-uniform vec2 amplitude;
-uniform vec2 delta;
+uniform vec2 window;
 uniform vec2 pitch;
+uniform vec4 translate;
 
 vec3 rgb2hsb(vec3 c)
 {
@@ -48,36 +47,37 @@ float oscillate(float frequencyComponent, float centeredComponent){
     return unipolar(cos(pow(frequencyComponent, 4.0) * TWO_PI * centeredComponent + (mod(centeredComponent, TWO_PI) * 0.5))) * frequencyComponent;
 }
 
+vec2 dualOscillate(vec2 frequencyVector, vec2 centeredVector){
+    return vec2(oscillate(frequencyVector.x, centeredVector.x), oscillate(frequencyVector.y, centeredVector.y));
+    //return vec2(0.5);
+}
+
 float newComponent(float modulator, float feedback, vec2 centered){
-    vec2 frequency = vec2(abs(0.5 - modulator) * 8.0);
-    vec2 oscillations = vec2(oscillate(frequency.x, centered.x), oscillate(frequency.y, centered.y));
+    // why multiply by 8
+    vec2 frequency = vec2(abs(0.5 - modulator));
+    vec2 oscillations = dualOscillate(frequency, centered);
+    
     vec2 newComponents = vec2(mix(oscillations, vec2(feedback), modulator));
-    //log
     return newComponents.x * newComponents.y;
 }
 
 void main()
 {
-    float pixel = window.x * window.y;
-    vec2 normalized = vec2(gl_FragCoord.xy / pixel);
+    vec2 normalized = gl_FragCoord.xy / window;
     vec2 inverseNormalized = 1.0 - normalized;
     vec2 position = vec2(normalized.x * inverseNormalized.x, normalized.y * inverseNormalized.y) * 4.0;
     vec2 adjusted = position * window;
-    vec2 seed = amplitude * adjusted;
+    vec2 seed = pitch * adjusted;
     float seedFloat = seed.x * seed.y;
-    
-
-    vec3 feedbackRGB = texture2DRect(tex0, texCoordVarying).rgb;
-    feedbackRGB = (0.25 - ((1.0 - feedbackRGB) * feedbackRGB)) * 4.0;
-    vec3 feedbackHSB = rgb2hsb(feedbackRGB);
-
-    float brightness = newComponent(seedFloat, feedbackHSB.z, adjusted);
-    float saturation = newComponent(brightness, feedbackHSB.y, adjusted);
-    float hue = newComponent(1.0 - saturation, feedbackHSB.x, adjusted);
-
-    vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)), feedbackRGB, amplitude.x * amplitude.y);
-
-    //the output function was updated
-
+/*  float feedbackH = rgb2hsb(texture2DRect(tex0, texCoordVarying).rgb).r;
+    float feedbackS = rgb2hsb(texture2DRect(tex0, texCoordVarying).rgb).g;
+    float feedbackB = rgb2hsb(texture2DRect(tex0, texCoordVarying).rgb).b;
+*/
+    vec3 feedbackHSB = rgb2hsb(texture2DRect(tex0, texCoordVarying).rgb);
+    float brightness = newComponent(seedFloat, feedbackHSB.r, adjusted);
+    float saturation = newComponent(brightness, feedbackHSB.g, adjusted);
+    vec2 hueVector = dualOscillate(vec2(1.0) - saturation, adjusted);
+    float hue = pow(hueVector.x * hueVector.y, 0.5);
+    vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
     outputColor = vec4(color, 1.0);
 }

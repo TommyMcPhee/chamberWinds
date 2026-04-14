@@ -11,7 +11,6 @@ void ofApp::print_array_value(int index, int value){
 }
 //--------------------------------------------------------------
 void ofApp::setup() {
-	//smallest_float = std::numeric_limits<float>::epsilon();
 	for(int a = 0; a < channels; a++){
 		in_z1[a] = 0.0;
 		in_dc[a] = 0.0;
@@ -283,13 +282,15 @@ void ofApp::refresh() {
 	videoBuffer.allocate(width, height);
 	videoBuffer1.allocate(width, height);
 	window.set(width, height);
-	vec2_amplitude.set(compared_amplitude[0], compared_amplitude[1]);
-	vec2_pitch.set(compared_pitch[0], compared_pitch[1]);
+	vec4_amplitude.set(compared_amplitude[0], compared_amplitude[1], amplitude_form[0], amplitude_form[1]);
+	vec4_delta.set(compared_delta[0], compared_delta[1], delta_form[0], delta_form[1]);
+	vec4_pitch.set(compared_pitch[0], compared_pitch[1], pitch_form[0], pitch_form[1]);
 	ofClear(0, 0, 0, 255);
 }
 
 void ofApp::setUniforms() {
 	shader.setUniform2f("window", window);
-	shader.setUniform2f("pitch", vec2_pitch);
-	shader.setUniform2f("pitch", vec2_pitch);
+	shader.setUniform4f("amplitude", vec4_amplitude);
+	shader.setUniform4f("delta", vec4_delta);
+	shader.setUniform4f("pitch", vec4_pitch);
 }

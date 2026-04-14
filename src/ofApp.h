@@ -43,6 +43,5 @@ public:
 	ofFbo videoBuffer, videoBuffer1;
 	bool midpoint = false;
 	float frameRate, width, height;
-	ofVec2f window, vec2_pitch;
-	ofVec4f transform;
+	ofVec2f window, vec2_amplitude, vec2_delta, vec2_pitch;
 };

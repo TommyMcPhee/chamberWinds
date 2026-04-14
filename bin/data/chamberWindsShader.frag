@@ -9,8 +9,9 @@ in vec2 texCoordVarying;
 out vec4 outputColor;
 
 uniform vec2 window;
+uniform vec2 amplitude;
+uniform vec2 delta;
 uniform vec2 pitch;
-uniform vec4 translate;
 
 vec3 rgb2hsb(vec3 c)
 {
@@ -49,14 +50,11 @@ float oscillate(float frequencyComponent, float centeredComponent){
 
 vec2 dualOscillate(vec2 frequencyVector, vec2 centeredVector){
     return vec2(oscillate(frequencyVector.x, centeredVector.x), oscillate(frequencyVector.y, centeredVector.y));
-    //return vec2(0.5);
 }
 
 float newComponent(float modulator, float feedback, vec2 centered){
-    // why multiply by 8
-    vec2 frequency = vec2(abs(0.5 - modulator));
+    vec2 frequency = vec2(abs(0.5 - modulator) * 2.0);
     vec2 oscillations = dualOscillate(frequency, centered);
-    
     vec2 newComponents = vec2(mix(oscillations, vec2(feedback), modulator));
     return newComponents.x * newComponents.y;
 }
@@ -77,7 +75,7 @@ void main()
     float brightness = newComponent(seedFloat, feedbackHSB.r, adjusted);
     float saturation = newComponent(brightness, feedbackHSB.g, adjusted);
     vec2 hueVector = dualOscillate(vec2(1.0) - saturation, adjusted);
-    float hue = pow(hueVector.x * hueVector.y, 0.5);
+    float hue = newComponent(pow(hueVector.x * hueVector.y, 0.5), feedbackHSB.b, adjusted);
     vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
     outputColor = vec4(color, 1.0);
 }

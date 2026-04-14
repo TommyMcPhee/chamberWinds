@@ -232,12 +232,12 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 		average_in_delta = comparison(in_delta);
 		average_in_pitch = comparison(in_pitch);
 		for(int b = 0; b < channels; b++){
-			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency * channel_pitch);
-			float channel_amplitude = sqrt(channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency * channel_pitch));
-			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency * channel_pitch);
+			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency);
+			float channel_amplitude = sqrt(channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency));
+			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency);
 			float ring = oscillate(ring_phase[b], channel_delta * 0.5);
 			float new_sample = sin(input_mono_sample * ring * HALF_PI / (channel_amplitude + smallest_float));
-			float output_sample = mix(out_z1[b], mix(new_sample, out_z1[b], channel_delta) * (1.0 - channel_amplitude), amplitude_form[b]) * (1.0 - amplitude_form[b]);
+			float output_sample = mix(out_z1[b], mix(new_sample, out_z1[b], channel_delta) * pow(1.0 - channel_amplitude, 2.0), amplitude_form[b]) * (1.0 - amplitude_form[b]);
 			analysis(b, out_z1[b], output_sample, out_dc[b], out_amplitude_root[b], out_amplitude[b], out_delta[b], out_cross[b], out_cross_count[b], out_pitch[b]);
 			out_z1[b] = output_sample;
 			int index = calculate_index(a, b);
@@ -283,13 +283,13 @@ void ofApp::refresh() {
 	videoBuffer.allocate(width, height);
 	videoBuffer1.allocate(width, height);
 	window.set(width, height);
+	vec2_amplitude.set(compared_amplitude[0], compared_amplitude[1]);
 	vec2_pitch.set(compared_pitch[0], compared_pitch[1]);
-	//transform.set()
 	ofClear(0, 0, 0, 255);
 }
 
 void ofApp::setUniforms() {
 	shader.setUniform2f("window", window);
 	shader.setUniform2f("pitch", vec2_pitch);
-	shader.setUniform4f("transform", transform);
+	shader.setUniform2f("pitch", vec2_pitch);
 }

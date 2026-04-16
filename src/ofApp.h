@@ -13,9 +13,6 @@ public:
 	std::unique_ptr<float[]> input_buffer, input_mono;
 	std::array<int, 6> buffer_sizes = {64, 128,256, 512, 1024, 2048};
 	void setup();
-	std::atomic<float> frame_sample;
-	std::array<float, 2> amplitude_lfo_phase, delta_lfo_phase, pitch_lfo_phase;
-	std::array<std::atomic<float>, 2> amplitude_lfo, delta_lfo, pitch_lfo;
 	//revisit which are atomic
 	std::array<std::atomic<float>, 2> compared_amplitude, compared_delta, compared_pitch, amplitude_form, delta_form, pitch_form;
 	//

@@ -14,7 +14,7 @@ uniform vec4 delta;
 uniform vec4 pitch;
 
 float vec2Float(vec2 inVec){
-    return inVec.x * inVec.y;
+    return pow(inVec.x * inVec.y, 0.5);
 }
 
 float beam(float coordinates, float location, float power){
@@ -51,8 +51,12 @@ vec3 hsb2rgb(vec3 hsb){
     return clamp(rgb,vec3(0.0),vec3(1.0));
 }
 
+float unipolar(float inA){
+    return inA * 0.5 + 0.5;
+}
+
 float oscillate(float frequencyComponent, float centeredComponent){
-    return (cos(pow(frequencyComponent, 4.0) * TWO_PI * centeredComponent + (mod(centeredComponent, TWO_PI) * 0.5)) * 0.5 + 0.5) * frequencyComponent;
+    return unipolar(cos(pow(frequencyComponent, 4.0) * TWO_PI * centeredComponent + (mod(centeredComponent, TWO_PI) * 0.5)));
 }
 
 vec2 dualOscillate(vec2 frequencyVector, vec2 centeredVector){
@@ -60,9 +64,8 @@ vec2 dualOscillate(vec2 frequencyVector, vec2 centeredVector){
 }
 
 float newComponent(float modulator, float feedback, vec2 centered){
-    vec2 frequency = vec2(abs(0.5 - modulator) * 2.0);
-    vec2 oscillations = dualOscillate(frequency, centered);
-    vec2 newComponents = vec2(mix(oscillations, vec2(feedback), modulator));
+    vec2 oscillations = dualOscillate(vec2(modulator), centered);
+    vec2 newComponents = mix(oscillations, vec2(feedback), modulator);
     return newComponents.x * newComponents.y;
 }
 
@@ -71,19 +74,19 @@ void main()
     vec2 normalized = gl_FragCoord.xy / window;
     vec2 inverseNormalized = vec2(1.0) - normalized;
     vec2 position = (vec2(0.5) - vec2(normalized.x * inverseNormalized.x, normalized.y * inverseNormalized.y)) * 2.0;
+    float positionPower = vec2Float(1.0 - position) * abs(0.5 - vec2Float(position));
     vec2 adjusted = position * window;
     vec2 amplitudePosition = amplitude.xy * position;
-    float amplitudeFloat = beam2(normalized, amplitude);
+    float amplitudeFloat = unipolar(sin(vec2Float(amplitudePosition)));
     vec2 deltaPosition = delta.xy * position;
     float deltaFloat = beam2(normalized, delta);
     vec2 pitchPosition = pitch.xy * position;
-    float pitchFloat = beam2(normalized, pitch);
+    float pitchFloat = vec2Float(pitchPosition);
     vec2 inverseAmplitude = vec2(1.0) - amplitude.xy;
     vec3 feedbackHSB = rgb2hsb(texture2DRect(tex0, texCoordVarying).rgb);
-    float brightness = newComponent(pitchFloat, feedbackHSB.r, adjusted);
-    float saturation = newComponent(brightness * deltaFloat, feedbackHSB.g, adjusted);
-    float hue = newComponent((1.0 - saturation) * amplitudeFloat, feedbackHSB.b, adjusted);
+    float brightness = pow(newComponent(vec2Float(pitchPosition), feedbackHSB.r, adjusted) * vec2Float(amplitudePosition), positionPower);
+    float saturation = pow(newComponent(brightness * vec2Float(deltaPosition), feedbackHSB.g, adjusted) * brightness, positionPower);
+    float hue = newComponent((1.0 - saturation) * vec2Float(1.0 - deltaPosition), feedbackHSB.b, adjusted);
     vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
-    //vec3 color = vec3(0.0, 0.5, 0.1);
     outputColor = vec4(color, 1.0);
 }

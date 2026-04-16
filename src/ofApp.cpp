@@ -233,16 +233,16 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 		average_in_delta = comparison(in_delta);
 		average_in_pitch = comparison(in_pitch);
 		for(int b = 0; b < channels; b++){
-			float channel_amplitude = sqrt(channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency)) * amplitude_lfo[0];
-			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency) * delta_lfo[0];
-			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency) * pitch_lfo[0];
+			float channel_amplitude = sqrt(channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency));
+			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency);
+			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency);
 			float ring = oscillate(ring_phase[b], channel_delta * 0.5);
 			float new_sample = sin(input_mono_sample * ring * HALF_PI / (channel_amplitude + smallest_float));
 			float output_sample = mix(out_z1[b], mix(new_sample, out_z1[b], channel_delta) * pow(1.0 - channel_amplitude, 2.0), amplitude_form[b]) * (1.0 - amplitude_form[b]);
 			analysis(b, out_z1[b], output_sample, out_dc[b], out_amplitude_root[b], out_amplitude[b], out_delta[b], out_cross[b], out_cross_count[b], out_pitch[b]);
 			out_z1[b] = output_sample;
 			int index = calculate_index(a, b);
-			buffer[index] = input_mono_sample;
+			buffer[index] = output_sample;
 		}
 		average_out_amplitude = comparison(out_amplitude);
 		average_out_delta = comparison(out_delta);
@@ -253,13 +253,10 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 		for(int b = 0; b < 2; b++){
 			compared_amplitude[b] = abs(average_in_amplitude[b] - average_out_amplitude[b]);
 			amplitude_frequency *= increment_form(amplitude_form[b], compared_amplitude[b]);
-			amplitude_lfo[b] = oscillate(amplitude_lfo_phase[b], compared_amplitude[b] * frame_sample);
 			compared_delta[b] = abs(average_in_delta[b] - average_out_delta[b]);
 			delta_frequency *= increment_form(delta_form[b], compared_delta[b]);
-			delta_lfo[b] = oscillate(delta_lfo_phase[b], compared_delta[b] * frame_sample);
 			compared_pitch[b] = abs(average_in_pitch[b] - average_out_pitch[b]);
 			pitch_frequency *= increment_form(pitch_form[b], compared_pitch[b]);
-			pitch_lfo[b] = oscillate(pitch_lfo_phase[b], compared_pitch[b] * frame_sample);
 		}
 	}
 }
@@ -281,15 +278,14 @@ void ofApp::draw() {
 
 
 void ofApp::refresh() {
-	frame_sample = ofGetFrameRate() / sample_rate;
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
 	video_buffer.allocate(width, height);
 	video_buffer1.allocate(width, height);
 	window.set(width, height);
-	vec4_amplitude.set(amplitude_lfo[0], amplitude_lfo[1], amplitude_form[0], amplitude_form[1]);
-	vec4_delta.set(delta_lfo[0], delta_lfo[1], delta_form[0], delta_form[1]);
-	vec4_pitch.set(pitch_lfo[0], pitch_lfo[1], pitch_form[0], pitch_form[1]);
+	vec4_amplitude.set(compared_amplitude[0], compared_amplitude[1], 0.5, 0.5);
+	vec4_delta.set(compared_delta[0], compared_delta[1], 0.5, 0.5);
+	vec4_pitch.set(pitch_form[0], pitch_form[1], 0.5, 0.5);
 	ofClear(0, 0, 0, 255);
 }
 

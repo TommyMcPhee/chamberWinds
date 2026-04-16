@@ -4,17 +4,19 @@
 
 class ofApp : public ofBaseApp {
 public:
-	static const int sampleRate = 48000;
 	static const int channels = 2;
 	void cin_refresh();
 	std::array<int, 4> sample_rates = {44100, 48000, 88200, 96000};
 	void print_array_value(int index, int value);
-	float epsilon_float;
+	float sample_rate;
 	int buffer_size;
 	std::unique_ptr<float[]> input_buffer, input_mono;
 	std::array<int, 6> buffer_sizes = {64, 128,256, 512, 1024, 2048};
 	void setup();
-	//revisit which actually need to be atomic
+	std::atomic<float> frame_sample;
+	std::array<float, 2> amplitude_lfo_phase, delta_lfo_phase, pitch_lfo_phase;
+	std::array<std::atomic<float>, 2> amplitude_lfo, delta_lfo, pitch_lfo;
+	//revisit which are atomic
 	std::array<std::atomic<float>, 2> compared_amplitude, compared_delta, compared_pitch, amplitude_form, delta_form, pitch_form;
 	//
 	void draw();
@@ -40,9 +42,9 @@ public:
 	void refresh();
 	void setUniforms();
 	ofShader shader;
-	ofFbo videoBuffer, videoBuffer1;
+	ofFbo video_buffer, video_buffer1;
 	bool midpoint = false;
-	float frameRate, width, height;
+	float width, height;
 	ofVec2f window;
 	ofVec4f vec4_amplitude, vec4_delta, vec4_pitch;
 };

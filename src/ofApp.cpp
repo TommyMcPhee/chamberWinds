@@ -64,9 +64,30 @@ void ofApp::setup() {
     in_device = device_list[in_device_index];
     streamSettings.setInDevice(in_device);
 
+	unsigned int sample_rates_size = sample_rates.size();
+    for(unsigned int a = 0; a < sample_rates_size; a++){
+        print_array_value(a, sample_rates[a]);
+    }
+
+	cout << "Enter the index of the desired sample rate (chosen sample rate must be compatible with your API and device(s)):" << endl;
+    cout << "Enter any integer greater than or equal to " << sample_rates_size << " to use your current default sample rate." << endl;
+    
+    if(std::cin >> sample_rate_index){
+        
+        if(sample_rate_index < sample_rates_size){
+			sample_rate = sample_rates[sample_rate_index];
+            streamSettings.sampleRate = sample_rate;
+        }
+
+    }
+    else{
+         cout << "Please enter an unsigned integer." << endl;
+    	cin_refresh();
+    }
+
 	GLFWmonitor *pMonitor = glfwGetPrimaryMonitor();
 	GLFWvidmode pVidmode = *glfwGetVideoMode(pMonitor);
-	static const int frameSamples = int(trunc(sampleRate * channels / pVidmode.refreshRate)) + 1;
+	static const int frameSamples = int(trunc(sample_rate * channels / pVidmode.refreshRate)) + 1;
 
 	while(buffer_size < frameSamples / 2){
 		buffer_size *= 2;
@@ -84,44 +105,25 @@ void ofApp::setup() {
 	cout << "Buffer size chosen:	" << buffer_size << endl;
 	cout << "Please ensure your operating system and hardware is set to be compatible with this buffer size before proceeding." << "\n" << endl;
 
-	unsigned int sample_rates_size = sample_rates.size();
-    for(unsigned int a = 0; a < sample_rates_size; a++){
-        print_array_value(a, sample_rates[a]);
-    }
-
-	cout << "Enter the index of the desired sample rate (chosen sample rate must be compatible with your API and device(s)):" << endl;
-    cout << "Enter any integer greater than or equal to " << sample_rates_size << " to use your current default sample rate." << endl;
-    
-    if(std::cin >> sample_rate_index){
-        
-        if(sample_rate_index < sample_rates_size){
-            streamSettings.sampleRate = sample_rates[sample_rate_index];
-        }
-
-    }
-    else{
-         cout << "Please enter an unsigned integer." << endl;
-    	cin_refresh();
-    }
 
 	//ofSetVerticalSync(true);
 	shader.load("chamberWindsShader");
 	
 	//videoBuffer.setDefaultTextureIndex(0);
-	videoBuffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
+	video_buffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
 	//videoBuffer.clear();
-	videoBuffer.begin();
+	video_buffer.begin();
 	ofClear(0, 0, 0, 255);
-	videoBuffer.end();
+	video_buffer.end();
 	//videoBuffer1.setDefaultTextureIndex(2);
 
 	//videoBuffer.getTextureReference(0);
 	
-	videoBuffer1.allocate(ofGetScreenWidth(), ofGetScreenHeight());
+	video_buffer1.allocate(ofGetScreenWidth(), ofGetScreenHeight());
 	//videoBuffer1.clear();
-	videoBuffer1.begin();
+	video_buffer1.begin();
 	ofClear(0, 0, 0, 255);
-	videoBuffer1.end();
+	video_buffer1.end();
 
 	streamSettings.numInputChannels = channels;
 	streamSettings.numOutputChannels = channels;
@@ -231,16 +233,16 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 		average_in_delta = comparison(in_delta);
 		average_in_pitch = comparison(in_pitch);
 		for(int b = 0; b < channels; b++){
-			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency);
-			float channel_amplitude = sqrt(channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency));
-			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency);
+			float channel_amplitude = sqrt(channel_oscillate(average_in_amplitude, amplitude_phase, amplitude_frequency)) * amplitude_lfo[0];
+			float channel_delta = channel_oscillate(average_in_delta, delta_phase, delta_frequency) * delta_lfo[0];
+			float channel_pitch = channel_oscillate(average_in_pitch, pitch_phase, pitch_frequency) * pitch_lfo[0];
 			float ring = oscillate(ring_phase[b], channel_delta * 0.5);
 			float new_sample = sin(input_mono_sample * ring * HALF_PI / (channel_amplitude + smallest_float));
 			float output_sample = mix(out_z1[b], mix(new_sample, out_z1[b], channel_delta) * pow(1.0 - channel_amplitude, 2.0), amplitude_form[b]) * (1.0 - amplitude_form[b]);
 			analysis(b, out_z1[b], output_sample, out_dc[b], out_amplitude_root[b], out_amplitude[b], out_delta[b], out_cross[b], out_cross_count[b], out_pitch[b]);
 			out_z1[b] = output_sample;
 			int index = calculate_index(a, b);
-			buffer[index] = output_sample;
+			buffer[index] = input_mono_sample;
 		}
 		average_out_amplitude = comparison(out_amplitude);
 		average_out_delta = comparison(out_delta);
@@ -251,10 +253,13 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 		for(int b = 0; b < 2; b++){
 			compared_amplitude[b] = abs(average_in_amplitude[b] - average_out_amplitude[b]);
 			amplitude_frequency *= increment_form(amplitude_form[b], compared_amplitude[b]);
+			amplitude_lfo[b] = oscillate(amplitude_lfo_phase[b], compared_amplitude[b] * frame_sample);
 			compared_delta[b] = abs(average_in_delta[b] - average_out_delta[b]);
 			delta_frequency *= increment_form(delta_form[b], compared_delta[b]);
+			delta_lfo[b] = oscillate(delta_lfo_phase[b], compared_delta[b] * frame_sample);
 			compared_pitch[b] = abs(average_in_pitch[b] - average_out_pitch[b]);
 			pitch_frequency *= increment_form(pitch_form[b], compared_pitch[b]);
+			pitch_lfo[b] = oscillate(pitch_lfo_phase[b], compared_pitch[b] * frame_sample);
 		}
 	}
 }
@@ -262,29 +267,29 @@ void ofApp::audioOut(ofSoundBuffer &buffer){
 //--------------------------------------------------------------
 void ofApp::draw() {
 	refresh();
-	videoBuffer.begin();
+	video_buffer.begin();
 	shader.begin();
-	videoBuffer1.draw(0, 0);
+	video_buffer1.draw(0, 0);
 	setUniforms();
 	shader.end();
-	videoBuffer.end();
-	videoBuffer.draw(0,0);
-	videoBuffer1.begin();
-	videoBuffer.draw(0, 0);
-	videoBuffer1.end();
+	video_buffer.end();
+	video_buffer.draw(0,0);
+	video_buffer1.begin();
+	video_buffer.draw(0, 0);
+	video_buffer1.end();
 }
 
 
 void ofApp::refresh() {
-	frameRate = ofGetFrameRate();
+	frame_sample = ofGetFrameRate() / sample_rate;
 	width = (float)ofGetWidth();
 	height = (float)ofGetHeight();
-	videoBuffer.allocate(width, height);
-	videoBuffer1.allocate(width, height);
+	video_buffer.allocate(width, height);
+	video_buffer1.allocate(width, height);
 	window.set(width, height);
-	vec4_amplitude.set(compared_amplitude[0], compared_amplitude[1], amplitude_form[0], amplitude_form[1]);
-	vec4_delta.set(compared_delta[0], compared_delta[1], delta_form[0], delta_form[1]);
-	vec4_pitch.set(compared_pitch[0], compared_pitch[1], pitch_form[0], pitch_form[1]);
+	vec4_amplitude.set(amplitude_lfo[0], amplitude_lfo[1], amplitude_form[0], amplitude_form[1]);
+	vec4_delta.set(delta_lfo[0], delta_lfo[1], delta_form[0], delta_form[1]);
+	vec4_pitch.set(pitch_lfo[0], pitch_lfo[1], pitch_form[0], pitch_form[1]);
 	ofClear(0, 0, 0, 255);
 }
 

@@ -283,9 +283,9 @@ void ofApp::refresh() {
 	video_buffer.allocate(width, height);
 	video_buffer1.allocate(width, height);
 	window.set(width, height);
-	vec4_amplitude.set(compared_amplitude[0], compared_amplitude[1], 0.5, 0.5);
-	vec4_delta.set(compared_delta[0], compared_delta[1], 0.5, 0.5);
-	vec4_pitch.set(pitch_form[0], pitch_form[1], 0.5, 0.5);
+	vec4_amplitude.set(compared_amplitude[0], compared_amplitude[1], amplitude_form[0], amplitude_form[1]);
+	vec4_delta.set(compared_delta[0], compared_delta[1], delta_form[0], delta_form[1]);
+	vec4_pitch.set(compared_pitch[0], compared_pitch[1], pitch_form[0], pitch_form[1]);
 	ofClear(0, 0, 0, 255);
 }
 

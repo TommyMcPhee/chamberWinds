@@ -17,16 +17,6 @@ float vec2Float(vec2 inVec){
     return pow(inVec.x * inVec.y, 0.5);
 }
 
-float beam(float coordinates, float location, float power){
-    float adjustedLocation = pow(location, 0.5);
-    float scale = 0.5 + abs(0.5 - adjustedLocation);
-    return pow((scale - abs(coordinates - location)) * (1.0 / scale), power);
-}
-
-float beam2(vec2 normalizedVec, vec4 parameters){
-    return pow(beam(normalizedVec.x, parameters.x, parameters.z) * beam(normalizedVec.y, parameters.y, parameters.w), 0.5 * (1.0 - (parameters.z * parameters.w)));
-}
-
 vec3 rgb2hsb(vec3 c){
     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
@@ -63,6 +53,14 @@ vec2 dualOscillate(vec2 frequencyVector, vec2 centeredVector){
     return vec2(oscillate(frequencyVector.x, centeredVector.x), oscillate(frequencyVector.y, centeredVector.y));
 }
 
+vec2 vec2Root(vec2 inVec){
+    return vec2(pow(inVec.x, 0.5), pow(inVec.y, 0.5));
+}
+
+float vec2Pow(vec2 inVec, vec2 inPow){
+    return vec2Float(vec2(pow(inVec.x, 1.0 / inPow.x), pow(inVec.y, 1.0 / inPow.y)));
+}
+
 float newComponent(vec2 modulator, float feedback, vec2 shapeMix, vec2 centered){
     vec2 frequency = modulator.xy * centered;
     float oscillation = oscillate(vec2Float(frequency), vec2Float(centered));
@@ -71,37 +69,21 @@ float newComponent(vec2 modulator, float feedback, vec2 shapeMix, vec2 centered)
     return mix(oscillationMix, feedback, vec2Float(modulator.xy));
 }
 
-float vec2Pow(vec2 inValue, vec2 inPow){
-    return vec2Float(vec2(pow(inValue.x, 1.0 / inPow.x), pow(inValue.y, 1.0 / inPow.y)));
-}
-
 void main()
 {
     vec2 normalized = gl_FragCoord.xy / window;
     vec2 inverseNormalized = vec2(1.0) - normalized;
     vec2 position = vec2(pow(normalized.x * inverseNormalized.x, 0.5), pow(normalized.y * inverseNormalized.y, 0.5)) * 2.0;
-    float positionPower = vec2Float(1.0 - position) * abs(0.5 - vec2Float(position));
+    vec2 positionSquared = position * position;
     vec2 adjusted = mix(position, position * window, position);
     vec3 feedbackRGB = texture2DRect(tex0, texCoordVarying).rgb;
     vec3 feedbackHSB = rgb2hsb(feedbackRGB);
     float brightness = pow(newComponent(pitch.xy, feedbackHSB.r, pitch.zw, adjusted) * vec2Pow(position, pitch.zw), vec2Float(pitch.zw));
     float inverseBrightness = 1.0 - brightness;
-    float saturation = pow(newComponent(delta.xy * inverseBrightness, feedbackHSB.g, delta.zw, adjusted) * vec2Pow(position, delta.zw), 0.5 * vec2Float(delta.zw));
-    float hue = pow(newComponent(saturation * (1.0 - delta.xy), feedbackHSB.b, delta.zw, adjusted) * vec2Pow(position, delta.zw), vec2Float(delta.zw));
-    //float positionFeedback = newComponent(amplitude * 0.1, vec2Float(position), adjusted);
-    //float positionFeedback = vec2Float(pow(position, 0.5 / amplitude.xy) * (1.0 - amplitude.xy));
-    //float positionFeedback = amplitudeComponent * vec2Float(pow(position, 1.0 / amplitude.zw) * amplitude.zw);
-    float positionDisplay = vec2Pow(position, 1.0 - amplitude.zw);
-    float positionFeedback = vec2Pow(position, amplitude.zw);
+    float saturation = pow(newComponent(delta.xy * inverseBrightness, feedbackHSB.g, delta.zw, adjusted) * vec2Pow(position, delta.zw), 0.5 * vec2Float(vec2Root(delta.zw)));
+    float hue = newComponent(saturation * (1.0 - delta.xy), feedbackHSB.b, delta.zw, adjusted);
+    float positionDisplay = vec2Pow(positionSquared, 1.0 - amplitude.zw);
+    float positionFeedback = vec2Pow(positionSquared, amplitude.zw);
     vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)) * positionDisplay, feedbackRGB, positionFeedback);
-    //vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
-    /*
-    float red = pow(color.r, 0.5);
-    float green = pow(color.g, 0.5);
-    float blue = pow(color.b, 0.5);
-    float secondary = (((red * green) + (red * blue) + (green * blue)) / 3.0) - (red * green * blue);
-    float white = red * green * blue;
-    float nonWhite = 1.0 - white;
-    */
     outputColor = vec4(color, 1.0);
 }

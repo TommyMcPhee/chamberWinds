@@ -63,12 +63,16 @@ vec2 dualOscillate(vec2 frequencyVector, vec2 centeredVector){
     return vec2(oscillate(frequencyVector.x, centeredVector.x), oscillate(frequencyVector.y, centeredVector.y));
 }
 
-float newComponent(vec4 modulator, float feedback, vec2 centered){
+float newComponent(vec2 modulator, float feedback, vec2 shapeMix, vec2 centered){
     vec2 frequency = modulator.xy * centered;
-    //vec2 oscillations = dualOscillate(frequency, centered);
-    //float oscillations = oscillate(vec2Float(frequency), vec2Float(centered)) * vec2Float(dualOscillate(frequency, centered));
-    float oscillations = oscillate(vec2Float(frequency), vec2Float(centered));
-    return mix(oscillations, feedback, vec2Float(modulator.xy));
+    float oscillation = oscillate(vec2Float(frequency), vec2Float(centered));
+    vec2 oscillations = dualOscillate(frequency, centered);
+    float oscillationMix = vec2Float(mix(vec2(oscillation), oscillations, vec2(pow(shapeMix.x, 0.5), pow(shapeMix.y, 0.5))));
+    return mix(oscillationMix, feedback, vec2Float(modulator.xy));
+}
+
+float vec2Pow(vec2 inValue, vec2 inPow){
+    return vec2Float(vec2(pow(inValue.x, 1.0 / inPow.x), pow(inValue.y, 1.0 / inPow.y)));
 }
 
 void main()
@@ -80,21 +84,24 @@ void main()
     vec2 adjusted = mix(position, position * window, position);
     vec3 feedbackRGB = texture2DRect(tex0, texCoordVarying).rgb;
     vec3 feedbackHSB = rgb2hsb(feedbackRGB);
-    float amplitudeComponent = newComponent(amplitude, vec2Float(1.0 - position), adjusted);
-    vec2 amplitudeAdjusted = mix(position, adjusted, amplitudeComponent);
-    float brightness = newComponent(pitch, feedbackHSB.r, adjusted);
+    float brightness = pow(newComponent(pitch.xy, feedbackHSB.r, pitch.zw, adjusted) * vec2Pow(position, pitch.zw), vec2Float(pitch.zw));
     float inverseBrightness = 1.0 - brightness;
-    float saturation = pow(newComponent(delta * inverseBrightness, feedbackHSB.g, adjusted), 0.5);
-    float hue = newComponent(saturation * (1.0 - delta), feedbackHSB.b, adjusted);
+    float saturation = pow(newComponent(delta.xy * inverseBrightness, feedbackHSB.g, delta.zw, adjusted) * vec2Pow(position, delta.zw), 0.5 * vec2Float(delta.zw));
+    float hue = pow(newComponent(saturation * (1.0 - delta.xy), feedbackHSB.b, delta.zw, adjusted) * vec2Pow(position, delta.zw), vec2Float(delta.zw));
     //float positionFeedback = newComponent(amplitude * 0.1, vec2Float(position), adjusted);
     //float positionFeedback = vec2Float(pow(position, 0.5 / amplitude.xy) * (1.0 - amplitude.xy));
-    float positionFeedback = amplitudeComponent * vec2Float(pow(position, 1.0 / amplitude.zw) * amplitude.zw);
-    vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)) * positionFeedback, feedbackRGB, positionFeedback);
+    //float positionFeedback = amplitudeComponent * vec2Float(pow(position, 1.0 / amplitude.zw) * amplitude.zw);
+    float positionDisplay = vec2Pow(position, 1.0 - amplitude.zw);
+    float positionFeedback = vec2Pow(position, amplitude.zw);
+    vec3 color = mix(hsb2rgb(vec3(hue, saturation, brightness)) * positionDisplay, feedbackRGB, positionFeedback);
+    //vec3 color = hsb2rgb(vec3(hue, saturation, brightness));
+    /*
     float red = pow(color.r, 0.5);
     float green = pow(color.g, 0.5);
     float blue = pow(color.b, 0.5);
     float secondary = (((red * green) + (red * blue) + (green * blue)) / 3.0) - (red * green * blue);
     float white = red * green * blue;
     float nonWhite = 1.0 - white;
+    */
     outputColor = vec4(color, 1.0);
 }

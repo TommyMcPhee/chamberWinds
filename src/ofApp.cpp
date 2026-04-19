@@ -9,6 +9,11 @@ void ofApp::cin_refresh(){
 void ofApp::print_array_value(int index, int value){
     cout << "[" << index << "]  " << value << endl;
 }
+
+void ofApp::unsigned_integer_warning(){
+    cout << "Please enter an unsigned integer." << endl;
+    cin_refresh();
+}
 //--------------------------------------------------------------
 void ofApp::setup() {
 	for(int a = 0; a < channels; a++){
@@ -27,7 +32,7 @@ void ofApp::setup() {
 		delta_form[a] = 1.0;
 		pitch_form[a] = 1.0;
 	}
-	unsigned int device_list_size, out_device_index, in_device_index, sample_rate_index;
+	unsigned int device_list_size, out_device_index, in_device_index, sample_rate_index, buffer_size_index;
     auto device_list = stream.getDeviceList();
     device_list_size = device_list.size();
     ofSoundDevice out_device, in_device;
@@ -47,7 +52,7 @@ void ofApp::setup() {
     }
     
     out_device = device_list[out_device_index];
-    streamSettings.setOutDevice(out_device);
+    stream_settings.setOutDevice(out_device);
 
 	cout << "Enter index of input device:" << endl;
     
@@ -62,7 +67,7 @@ void ofApp::setup() {
     }
     
     in_device = device_list[in_device_index];
-    streamSettings.setInDevice(in_device);
+    stream_settings.setInDevice(in_device);
 
 	unsigned int sample_rates_size = sample_rates.size();
     for(unsigned int a = 0; a < sample_rates_size; a++){
@@ -76,15 +81,15 @@ void ofApp::setup() {
         
         if(sample_rate_index < sample_rates_size){
 			sample_rate = sample_rates[sample_rate_index];
-            streamSettings.sampleRate = sample_rate;
+            stream_settings.sampleRate = sample_rate;
         }
 
     }
     else{
-         cout << "Please enter an unsigned integer." << endl;
+        cout << "Please enter an unsigned integer." << endl;
     	cin_refresh();
     }
-
+/*
 	GLFWmonitor *pMonitor = glfwGetPrimaryMonitor();
 	GLFWvidmode pVidmode = *glfwGetVideoMode(pMonitor);
 	static const int frameSamples = int(trunc(sample_rate * channels / pVidmode.refreshRate)) + 1;
@@ -99,37 +104,46 @@ void ofApp::setup() {
 		buffer_size = buffer_sizes[0];
 	}
 	streamSettings.bufferSize = buffer_size;
+*/
+	unsigned int buffer_sizes_size = buffer_sizes.size();
+    for(unsigned int a = 0; a < buffer_sizes_size; a++){
+        print_array_value(a, buffer_sizes[a]);
+    }
+
+    cout << "Enter the index of the desired buffer size (chosen buffer size must be compatible with your API and device(s)):" << endl;
+    cout << "Enter any integer greater than or equal to " << buffer_sizes_size << " to use your current default buffer size." << endl;
+    
+    if(std::cin >> buffer_size_index){
+        if(buffer_size_index < buffer_sizes_size){
+			buffer_size = buffer_sizes[buffer_size_index];
+            stream_settings.bufferSize = buffer_size;
+        }
+    }
+    else{
+        unsigned_integer_warning();
+    }
+
 	input_buffer = std::make_unique<float[]>(channels * buffer_size);
 	input_mono = std::make_unique<float[]>(buffer_size);
+
 	cout << "This program automatically chosses the buffer size based on the monitor's refresh rate." << endl;
 	cout << "Buffer size chosen:	" << buffer_size << endl;
 	cout << "Please ensure your operating system and hardware is set to be compatible with this buffer size before proceeding." << "\n" << endl;
 
-
-	//ofSetVerticalSync(true);
 	shader.load("chamberWindsShader");
-	
-	//videoBuffer.setDefaultTextureIndex(0);
 	video_buffer.allocate(ofGetScreenWidth(), ofGetScreenHeight());
-	//videoBuffer.clear();
 	video_buffer.begin();
 	ofClear(0, 0, 0, 255);
 	video_buffer.end();
-	//videoBuffer1.setDefaultTextureIndex(2);
-
-	//videoBuffer.getTextureReference(0);
-	
 	video_buffer1.allocate(ofGetScreenWidth(), ofGetScreenHeight());
-	//videoBuffer1.clear();
 	video_buffer1.begin();
 	ofClear(0, 0, 0, 255);
 	video_buffer1.end();
-
-	streamSettings.numInputChannels = channels;
-	streamSettings.numOutputChannels = channels;
-	streamSettings.setInListener(this);
-	streamSettings.setOutListener(this);
-	stream.setup(streamSettings);
+	stream_settings.numInputChannels = channels;
+	stream_settings.numOutputChannels = channels;
+	stream_settings.setInListener(this);
+	stream_settings.setOutListener(this);
+	stream.setup(stream_settings);
 }
 
 void ofApp::ofSoundStreamSetup(ofSoundStreamSettings &settings){
